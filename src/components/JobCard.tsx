@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppliedToggle } from "@/components/AppliedToggle";
 import { CONFIDENCE_LABELS, FLAG_LABELS, JOB_TYPE_LABELS } from "@/lib/classify";
 import { SOURCE_LABELS } from "@/config/settings";
 import type { JobListItem } from "@/lib/queries";
@@ -89,6 +90,7 @@ export function JobCard({
           </span>
         ))}
         <span className="badge ghost">{JOB_TYPE_LABELS[job.jobType]}</span>
+        <AppliedToggle jobId={job.id} />
       </div>
 
       {job.relevanceSignals.length > 0 && (

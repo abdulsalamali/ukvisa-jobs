@@ -208,6 +208,17 @@ again.
 
 ---
 
+## Marking jobs as applied
+
+Every job card has a **Mark applied** toggle. Clicking it again undoes it. The
+sidebar has a **Hide applied** filter, with a count.
+
+State lives in this browser only (`localStorage`) — nothing is sent anywhere,
+and there is no account. Clearing site data, or using a different browser or
+device, starts fresh; there is deliberately no sync.
+
+---
+
 ## Deployment (GitHub Pages, free)
 
 The site is a static export. Pages serves the files; GitHub Actions rebuilds

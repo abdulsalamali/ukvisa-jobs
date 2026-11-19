@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { JobCard } from "@/components/JobCard";
 import { JobTypeFilter } from "@/components/JobTypeFilter";
 import { CONFIDENCE_LABELS } from "@/lib/classify";
+import { useApplied } from "@/lib/applied";
 import { dataUrl } from "@/lib/basePath";
 import type { JobListItem } from "@/lib/queries";
 import type { Confidence } from "@/lib/types";
@@ -30,6 +31,8 @@ export default function JobsPage() {
   const [sort, setSort] = useState<SortKey>("relevance");
   const [minRelevance, setMinRelevance] = useState(0);
   const [page, setPage] = useState(1);
+  const [hideApplied, setHideApplied] = useState(false);
+  const { applied, count: appliedCount } = useApplied();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -57,7 +60,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, city, types, confidence, sort, minRelevance]);
+  }, [q, city, types, confidence, sort, minRelevance, hideApplied, applied]);
 
   const cities = useMemo(() => {
     const counts = new Map<string, number>();
@@ -80,6 +83,7 @@ export default function JobsPage() {
     const needle = q.trim().toLowerCase();
     const rows = (jobs ?? []).filter((job) => {
       if (job.relevance < minRelevance) return false;
+      if (hideApplied && applied.has(job.id)) return false;
       if (needle && !`${job.title} ${job.companyName}`.toLowerCase().includes(needle)) {
         return false;
       }
@@ -97,7 +101,7 @@ export default function JobsPage() {
     else rows.sort((a, b) => b.relevance - a.relevance);
 
     return rows;
-  }, [jobs, q, city, types, confidence, sort, minRelevance]);
+  }, [jobs, q, city, types, confidence, sort, minRelevance, hideApplied, applied]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -171,6 +175,19 @@ export default function JobsPage() {
             ))}
           </fieldset>
 
+          <fieldset className="filter-group">
+            <legend>Applied</legend>
+            <label>
+              <input
+                type="checkbox"
+                checked={hideApplied}
+                onChange={() => setHideApplied((value) => !value)}
+              />
+              <span>Hide applied</span>
+              <span className="count">{appliedCount}</span>
+            </label>
+          </fieldset>
+
           <button
             className="btn secondary"
             type="button"
@@ -182,6 +199,7 @@ export default function JobsPage() {
               setConfidence(CONFIDENCE_ORDER);
               setSort("relevance");
               setMinRelevance(0);
+              setHideApplied(false);
             }}
           >
             Reset filters
