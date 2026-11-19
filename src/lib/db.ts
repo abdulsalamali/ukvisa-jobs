@@ -1,5 +1,12 @@
 import { createClient, type Client } from "@libsql/client";
-import { readFileSync } from "node:fs";
+import {
+  accessSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  readFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 let cached: Client | null = null;
@@ -8,10 +15,39 @@ export function databaseUrl(): string {
   return process.env.TURSO_DATABASE_URL ?? "file:data/jobs.db";
 }
 
+/**
+ * Serverless platforms ship the filesystem read-only, and SQLite needs to
+ * create a journal next to the database. If the directory is not writable,
+ * copy the file to the temp directory once and open it from there.
+ */
+function resolveRuntimeUrl(url: string): string {
+  if (!url.startsWith("file:")) return url;
+
+  const filePath = url.slice("file:".length);
+  const absolute = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
+
+  if (!existsSync(absolute)) return url;
+
+  try {
+    accessSync(path.dirname(absolute), constants.W_OK);
+    return url;
+  } catch {
+    const temporary = path.join(tmpdir(), "sponsorboard.db");
+    try {
+      if (!existsSync(temporary)) copyFileSync(absolute, temporary);
+      return `file:${temporary}`;
+    } catch (error) {
+      console.error("[db] could not open database:", (error as Error).message);
+      return url;
+    }
+  }
+}
+
 export function db(): Client {
   if (!cached) {
+    const url = resolveRuntimeUrl(databaseUrl());
     cached = createClient({
-      url: databaseUrl(),
+      url,
       authToken: process.env.TURSO_AUTH_TOKEN || undefined,
     });
   }

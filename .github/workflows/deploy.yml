@@ -1,0 +1,76 @@
+name: Build and deploy
+
+on:
+  schedule:
+    - cron: "10 4 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Optional: keeps the CV out of the repository while still letting the
+      # build score jobs against it. Set the CV_TEXT repository secret.
+      - name: Write CV from secret
+        if: ${{ secrets.CV_TEXT != '' }}
+        env:
+          CV_TEXT: ${{ secrets.CV_TEXT }}
+        run: printf '%s' "$CV_TEXT" > config/cv.md
+
+      # Optional: personal profile overrides (visa status). Note that anything
+      # written here is visible on the public site.
+      - name: Write profile overrides from secret
+        if: ${{ secrets.PROFILE_LOCAL_JSON != '' }}
+        env:
+          PROFILE_LOCAL_JSON: ${{ secrets.PROFILE_LOCAL_JSON }}
+        run: printf '%s' "$PROFILE_LOCAL_JSON" > config/profile.local.json
+
+      - name: Ingest register and jobs
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          REED_API_KEY: ${{ secrets.REED_API_KEY }}
+        run: npm run ingest
+
+      - name: Build static site
+        env:
+          NEXT_PUBLIC_BASE_PATH: /ukvisa-jobs
+        run: npm run build:static
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

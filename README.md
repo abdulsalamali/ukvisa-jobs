@@ -208,33 +208,31 @@ again.
 
 ---
 
-## Deployment (free tier)
+## Deployment (GitHub Pages, free)
 
-1. **Database.** Create a free Turso database:
-   ```bash
-   turso db create sponsorboard
-   turso db show sponsorboard --url
-   turso db tokens create sponsorboard
-   ```
-2. **Seed it once** locally:
-   ```bash
-   TURSO_DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... npm run ingest
-   ```
-3. **Deploy** to Vercel and set `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` in
-   project settings. `@libsql/client` is already marked as a server external
-   package in `next.config.ts`.
+The site is a static export. Pages serves the files; GitHub Actions rebuilds
+them on a schedule.
 
-Cost: £0 on Turso's free tier (5 GB, 500M row reads/month) plus Vercel's free
-tier. A domain is the only optional spend.
+1. **Make the repository public** (Pages from a private repo needs a paid plan).
+   Nothing personal is committed: `config/cv.md` and `config/profile.local.json`
+   are gitignored.
+2. **Settings → Pages → Source: GitHub Actions.**
+3. Push to `main`, or run the *Build and deploy* workflow manually.
 
-### Nightly refresh
+Every run: `npm run ingest` → `npm run build:static` → upload `out/`. The cron
+is 04:10 UTC daily, so jobs are up to a day old. Narrow it to every few hours
+if you prefer fresher data.
 
-`.github/workflows/ingest.yml` runs at 04:10 UTC. Add these repository
-secrets: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and optionally
-`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `REED_API_KEY`.
+### Optional secrets
 
-Without the aggregator keys the site still works — it just covers fewer
-employers, because ATS feeds need no key at all.
+| Secret | Effect |
+|---|---|
+| `CV_TEXT` | Written to `config/cv.md` before the build, so the deployed board scores against your real CV while the file stays out of the repo. |
+| `PROFILE_LOCAL_JSON` | Overrides in `config/profile.local.json`, e.g. visa status. **Anything here appears on the public site.** |
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `REED_API_KEY` | Extra job sources. |
+
+Without `CV_TEXT` the build still works — scoring falls back to the skills
+listed in `config/profile.json`.
 
 ---
 

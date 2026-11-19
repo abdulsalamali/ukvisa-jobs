@@ -18,3 +18,10 @@ data/cv.txt
 
 # Your CV is personal — never commit it
 config/cv.md
+
+# Personal profile overrides (visa status, etc.)
+config/profile.local.json
+.vercel
+
+# Generated static data
+public/data/

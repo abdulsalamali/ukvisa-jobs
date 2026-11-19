@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav className="nav">
               <Link href="/jobs">Jobs</Link>
-              <Link href="/jobs?sort=relevance&minRelevance=40">For you</Link>
+              <Link href="/jobs?minRelevance=40">For you</Link>
               <Link href="/sponsors">Sponsors</Link>
             </nav>
           </div>

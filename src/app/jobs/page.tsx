@@ -1,27 +1,14 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { JobCard } from "@/components/JobCard";
 import { JobTypeFilter } from "@/components/JobTypeFilter";
-import { SortSelect } from "@/components/SortSelect";
-import {
-  getTopCities,
-  getTypeCounts,
-  listJobs,
-  type JobFilters,
-  type SortKey,
-} from "@/lib/queries";
 import { CONFIDENCE_LABELS } from "@/lib/classify";
-import type { Confidence, JobType } from "@/lib/types";
+import { dataUrl } from "@/lib/basePath";
+import type { JobListItem } from "@/lib/queries";
+import type { Confidence } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
-type SearchParams = Record<string, string | string[] | undefined>;
-
-const DEFAULT_CONFIDENCE: Confidence[] = [
-  "apply_with_confidence",
-  "application_recommended",
-  "unverified",
-  "no_sponsorship",
-];
+const PAGE_SIZE = 20;
 
 const CONFIDENCE_ORDER: Confidence[] = [
   "apply_with_confidence",
@@ -30,56 +17,94 @@ const CONFIDENCE_ORDER: Confidence[] = [
   "no_sponsorship",
 ];
 
-function toArray(value: string | string[] | undefined): string[] {
-  if (!value) return [];
-  return Array.isArray(value) ? value : [value];
-}
+type SortKey = "relevance" | "newest" | "salary";
 
-function pageHref(params: SearchParams, page: number): string {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (key === "page") continue;
-    for (const item of toArray(value)) search.append(key, item);
-  }
-  search.set("page", String(page));
-  return `/jobs?${search.toString()}`;
-}
+export default function JobsPage() {
+  const [jobs, setJobs] = useState<JobListItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export default async function JobsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const params = await searchParams;
+  const [q, setQ] = useState("");
+  const [city, setCity] = useState("");
+  const [types, setTypes] = useState<string[]>([]);
+  const [confidence, setConfidence] = useState<string[]>(CONFIDENCE_ORDER);
+  const [sort, setSort] = useState<SortKey>("relevance");
+  const [minRelevance, setMinRelevance] = useState(0);
+  const [page, setPage] = useState(1);
 
-  const q = typeof params.q === "string" ? params.q : "";
-  const city = typeof params.city === "string" ? params.city : "";
-  const types = toArray(params.type);
-  const confidenceParam = toArray(params.confidence) as Confidence[];
-  const confidence = confidenceParam.length > 0 ? confidenceParam : DEFAULT_CONFIDENCE;
-  const sort = (typeof params.sort === "string" ? params.sort : "relevance") as SortKey;
-  const page = Math.max(1, Number(params.page ?? 1) || 1);
-  const minRelevance = Number(params.minRelevance ?? 0) || 0;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const value = Number(params.get("minRelevance") ?? 0);
+    if (Number.isFinite(value) && value > 0) setMinRelevance(value);
+  }, []);
 
-  const filters: JobFilters = {
-    q: q || undefined,
-    city: city || undefined,
-    types: types.length ? (types as JobType[]) : undefined,
-    confidence,
-    minRelevance: minRelevance || undefined,
-    sort,
-    page,
-    pageSize: 20,
+  useEffect(() => {
+    let cancelled = false;
+    fetch(dataUrl("jobs.json"))
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: JobListItem[]) => {
+        if (!cancelled) setJobs(data);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, city, types, confidence, sort, minRelevance]);
+
+  const cities = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const job of jobs ?? []) {
+      if (!job.city) continue;
+      counts.set(job.city, (counts.get(job.city) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40);
+  }, [jobs]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const job of jobs ?? []) {
+      counts[job.jobType] = (counts[job.jobType] ?? 0) + 1;
+    }
+    return counts;
+  }, [jobs]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const rows = (jobs ?? []).filter((job) => {
+      if (job.relevance < minRelevance) return false;
+      if (needle && !`${job.title} ${job.companyName}`.toLowerCase().includes(needle)) {
+        return false;
+      }
+      if (city && job.city !== city) return false;
+      if (types.length > 0 && !types.includes(job.jobType)) return false;
+      if (confidence.length > 0 && !confidence.includes(job.confidence)) return false;
+      return true;
+    });
+
+    const pay = (job: JobListItem) => job.salaryMax ?? job.salaryMin ?? 0;
+    const time = (job: JobListItem) => (job.postedAt ? Date.parse(job.postedAt) : 0);
+
+    if (sort === "newest") rows.sort((a, b) => time(b) - time(a));
+    else if (sort === "salary") rows.sort((a, b) => pay(b) - pay(a));
+    else rows.sort((a, b) => b.relevance - a.relevance);
+
+    return rows;
+  }, [jobs, q, city, types, confidence, sort, minRelevance]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const toggle = (list: string[], value: string, set: (next: string[]) => void) => {
+    set(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   };
-
-  const [results, typeCounts, cities] = await Promise.all([
-    listJobs(filters),
-    getTypeCounts(),
-    getTopCities(40),
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(results.total / results.pageSize));
-  const showing = results.items.length;
 
   return (
     <div className="container">
@@ -91,120 +116,147 @@ export default async function JobsPage({
         </p>
       </div>
 
-      <form method="get" action="/jobs">
-        <div className="split">
-          <aside className="filters">
-            <div className="filter-group">
-              <label className="group-label" htmlFor="q">
-                Search
-              </label>
-              <input
-                id="q"
-                className="input"
-                type="search"
-                name="q"
-                defaultValue={q}
-                placeholder="Job title or company"
-              />
-            </div>
+      <div className="split">
+        <aside className="filters">
+          <div className="filter-group">
+            <label className="group-label" htmlFor="q">
+              Search
+            </label>
+            <input
+              id="q"
+              className="input"
+              type="search"
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="Job title or company"
+            />
+          </div>
 
-            <div className="filter-group">
-              <label className="group-label" htmlFor="city">
-                Location
+          <div className="filter-group">
+            <label className="group-label" htmlFor="city">
+              Location
+            </label>
+            <select
+              id="city"
+              className="select"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+            >
+              <option value="">All UK</option>
+              {cities.map(([name, count]) => (
+                <option key={name} value={name}>
+                  {name} ({count})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <JobTypeFilter
+            counts={typeCounts}
+            selected={types}
+            onToggle={(type) => toggle(types, type, setTypes)}
+          />
+
+          <fieldset className="filter-group">
+            <legend>Sponsorship</legend>
+            {CONFIDENCE_ORDER.map((key) => (
+              <label key={key}>
+                <input
+                  type="checkbox"
+                  checked={confidence.includes(key)}
+                  onChange={() => toggle(confidence, key, setConfidence)}
+                />
+                <span>{CONFIDENCE_LABELS[key].short}</span>
               </label>
-              <select id="city" className="select" name="city" defaultValue={city}>
-                <option value="">All UK</option>
-                {cities.map((item) => (
-                  <option key={item.city} value={item.city}>
-                    {item.city} ({item.jobs})
-                  </option>
-                ))}
+            ))}
+          </fieldset>
+
+          <button
+            className="btn secondary"
+            type="button"
+            style={{ width: "100%" }}
+            onClick={() => {
+              setQ("");
+              setCity("");
+              setTypes([]);
+              setConfidence(CONFIDENCE_ORDER);
+              setSort("relevance");
+              setMinRelevance(0);
+            }}
+          >
+            Reset filters
+          </button>
+        </aside>
+
+        <section>
+          <div className="results-head">
+            <span className="count-line">
+              {jobs === null ? (
+                "Loading…"
+              ) : (
+                <>
+                  <strong>{filtered.length.toLocaleString("en-GB")}</strong> jobs
+                  {city ? ` in ${city}` : ""} · showing {visible.length} on page {page} of{" "}
+                  {totalPages}
+                </>
+              )}
+            </span>
+            <div className="sort-form">
+              <span>Sort</span>
+              <select
+                className="select"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as SortKey)}
+                aria-label="Sort jobs"
+              >
+                <option value="relevance">Best match</option>
+                <option value="newest">Newest</option>
+                <option value="salary">Salary</option>
               </select>
             </div>
+          </div>
 
-            <JobTypeFilter counts={typeCounts} selected={types} />
+          {error && <div className="empty">Could not load jobs: {error}</div>}
 
-            <fieldset className="filter-group">
-              <legend>Sponsorship</legend>
-              {CONFIDENCE_ORDER.map((key) => {
-                const label = CONFIDENCE_LABELS[key];
-                return (
-                  <label key={key}>
-                    <input
-                      type="checkbox"
-                      name="confidence"
-                      value={key}
-                      defaultChecked={confidence.includes(key)}
-                    />
-                    <span>{label.short}</span>
-                  </label>
-                );
-              })}
-            </fieldset>
+          {!error && jobs === null && <div className="empty">Loading jobs…</div>}
 
-            {minRelevance > 0 && (
-              <input type="hidden" name="minRelevance" value={minRelevance} />
-            )}
+          {!error && jobs !== null && visible.length === 0 && (
+            <div className="empty">No jobs match these filters.</div>
+          )}
 
-            <button className="btn" type="submit" style={{ width: "100%" }}>
-              Apply filters
-            </button>
-            <p className="tiny muted" style={{ marginBottom: 0 }}>
-              <Link href="/jobs">Reset</Link>
-            </p>
-          </aside>
-
-          <section>
-            <div className="results-head">
-              <span className="count-line">
-                <strong>{results.total.toLocaleString("en-GB")}</strong> jobs
-                {city ? ` in ${city}` : ""} · showing {showing} on page {results.page} of{" "}
-                {totalPages}
-              </span>
-              <div className="sort-form">
-                <span>Sort</span>
-                <SortSelect value={sort} />
-              </div>
+          {visible.length > 0 && (
+            <div className="jobs">
+              {visible.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
             </div>
+          )}
 
-            {results.items.length === 0 ? (
-              <div className="empty">
-                No jobs match these filters. Try{" "}
-                <Link href="/jobs">clearing them</Link>.
-              </div>
-            ) : (
-              <div className="jobs">
-                {results.items.map((job) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
-              </div>
-            )}
-
-            {totalPages > 1 && (
-              <nav className="pagination" aria-label="Pagination">
-                {results.page > 1 && <Link href={pageHref(params, results.page - 1)}>Previous</Link>}
-                {Array.from({ length: Math.min(7, totalPages) }, (_value, index) => {
-                  const first = Math.max(1, Math.min(results.page - 3, totalPages - 6));
-                  const number = first + index;
-                  if (number > totalPages) return null;
-                  return number === results.page ? (
-                    <span key={number} className="current">
-                      {number}
-                    </span>
-                  ) : (
-                    <Link key={number} href={pageHref(params, number)}>
-                      {number}
-                    </Link>
-                  );
-                })}
-                {results.page < totalPages && (
-                  <Link href={pageHref(params, results.page + 1)}>Next</Link>
-                )}
-              </nav>
-            )}
-          </section>
-        </div>
-      </form>
+          {totalPages > 1 && (
+            <nav className="pagination" aria-label="Pagination">
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </button>
+              <span className="current">
+                {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </button>
+            </nav>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

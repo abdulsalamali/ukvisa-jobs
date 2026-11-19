@@ -5,8 +5,6 @@ import { getStats, getTopCities, listJobs } from "@/lib/queries";
 import { loadCvKeywords, loadProfile } from "@/lib/relevance";
 import type { Confidence } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 const LEGEND_ORDER: Confidence[] = [
   "apply_with_confidence",
   "application_recommended",
@@ -91,7 +89,7 @@ export default async function HomePage() {
           <section>
             <div className="results-head">
               <h2 style={{ margin: 0 }}>Best matches for your CV</h2>
-              <Link className="btn secondary" href="/jobs?sort=relevance&minRelevance=25">
+              <Link className="btn secondary" href="/jobs?minRelevance=25">
                 See all
               </Link>
             </div>

@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JobCard } from "@/components/JobCard";
+import { db } from "@/lib/db";
 import { getSponsor, getSponsorJobs } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+export const dynamicParams = false;
+
+/** Static export needs every company page enumerated at build time. */
+export async function generateStaticParams() {
+  const res = await db().execute(
+    "SELECT DISTINCT sponsor_slug AS slug FROM jobs WHERE active = 1 AND sponsor_slug IS NOT NULL",
+  );
+  return res.rows.map((row) => ({ slug: String(row.slug) }));
+}
 
 export default async function CompanyPage({
   params,

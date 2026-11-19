@@ -75,11 +75,21 @@ function containsPhrase(haystack: string, phrase: string): boolean {
 }
 
 export function loadProfile(): Profile {
-  const file = path.join(process.cwd(), "config/profile.json");
-  if (!existsSync(file)) {
+  const base = path.join(process.cwd(), "config/profile.json");
+  const local = path.join(process.cwd(), "config/profile.local.json");
+
+  if (!existsSync(base)) {
     return { fields: [], skills: [], locations: [] };
   }
-  const parsed = JSON.parse(readFileSync(file, "utf8")) as Profile;
+
+  const parsed = JSON.parse(readFileSync(base, "utf8")) as Profile;
+
+  // Personal overrides (visa status, CV path) live in an untracked file so the
+  // repository can be public while your own build stays tailored.
+  if (existsSync(local)) {
+    const overrides = JSON.parse(readFileSync(local, "utf8")) as Partial<Profile>;
+    Object.assign(parsed, overrides);
+  }
 
   // Backwards compatibility with the first iteration of the profile format,
   // which stored locations as plain strings.

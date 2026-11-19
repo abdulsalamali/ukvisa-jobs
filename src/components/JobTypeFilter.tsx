@@ -1,4 +1,5 @@
-import Link from "next/link";
+"use client";
+
 import { JOB_TYPE_LABELS } from "@/lib/classify";
 import type { JobType } from "@/lib/types";
 
@@ -16,9 +17,11 @@ const GROUPS: { label: string; types: JobType[] }[] = [
 export function JobTypeFilter({
   counts,
   selected,
+  onToggle,
 }: {
   counts: Record<string, number>;
   selected: string[];
+  onToggle: (type: string) => void;
 }) {
   return (
     <fieldset className="filter-group">
@@ -35,9 +38,8 @@ export function JobTypeFilter({
               <label key={type} className="sub">
                 <input
                   type="checkbox"
-                  name="type"
-                  value={type}
-                  defaultChecked={selected.includes(type)}
+                  checked={selected.includes(type)}
+                  onChange={() => onToggle(type)}
                 />
                 <span>{JOB_TYPE_LABELS[type]}</span>
                 <span className="count">{counts[type] ?? 0}</span>
@@ -46,10 +48,15 @@ export function JobTypeFilter({
           </div>
         );
       })}
-      <p className="tiny muted" style={{ marginTop: 10 }}>
-        Unclassified roles are excluded while a type filter is active.{" "}
-        <Link href="/jobs?type=unspecified">Show unclassified</Link>
-      </p>
+      <label className="sub">
+        <input
+          type="checkbox"
+          checked={selected.includes("unspecified")}
+          onChange={() => onToggle("unspecified")}
+        />
+        <span>Unclassified</span>
+        <span className="count">{counts.unspecified ?? 0}</span>
+      </label>
     </fieldset>
   );
 }
