@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "greenhouse",
+    "slug": "monzo",
+    "name": "Monzo Bank Ltd",
+    "jobs": 61,
+    "ukJobs": 52,
+    "providerName": "Monzo",
+    "verifiedBy": "name"
+  }
+]

@@ -11,7 +11,8 @@
     "ingest": "tsx src/scripts/ingest.ts",
     "ingest:sponsors": "tsx src/scripts/ingest.ts --sponsors",
     "ingest:jobs": "tsx src/scripts/ingest.ts --jobs",
-    "check:sources": "tsx src/scripts/check-sources.ts"
+    "check:sources": "tsx src/scripts/check-sources.ts",
+    "discover": "tsx src/scripts/discover-ats.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

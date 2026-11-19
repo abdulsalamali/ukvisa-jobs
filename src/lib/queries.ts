@@ -249,6 +249,7 @@ export async function getSponsorJobs(slug: string): Promise<JobListItem[]> {
 export interface SiteStats {
   sponsors: number;
   jobs: number;
+  employers: number;
   jobsThisWeek: number;
   confidence: Record<Confidence, number>;
   sourceDate: string | null;
@@ -263,6 +264,7 @@ export async function getStats(): Promise<SiteStats> {
       sql: `SELECT
               (SELECT COUNT(*) FROM sponsors) AS sponsors,
               (SELECT COUNT(*) FROM jobs WHERE active = 1) AS jobs,
+              (SELECT COUNT(DISTINCT company_name) FROM jobs WHERE active = 1) AS employers,
               (SELECT COUNT(*) FROM jobs WHERE active = 1 AND posted_at >= ?) AS jobs_week`,
       args: [weekAgo],
     }),
@@ -287,6 +289,7 @@ export async function getStats(): Promise<SiteStats> {
   return {
     sponsors: Number(first?.sponsors ?? 0),
     jobs: Number(first?.jobs ?? 0),
+    employers: Number(first?.employers ?? 0),
     jobsThisWeek: Number(first?.jobs_week ?? 0),
     confidence,
     sourceDate: metaMap.get("sponsors_source_date") ?? null,

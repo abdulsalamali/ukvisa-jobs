@@ -26,7 +26,7 @@ async function getJson<T>(url: string): Promise<T | null> {
   }
 }
 
-export type AtsKind = "greenhouse" | "lever" | "ashby";
+export type AtsKind = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
 
 export interface AtsCompany {
   kind: AtsKind;
@@ -71,6 +71,22 @@ interface AshbyJob {
   };
 }
 
+interface WorkableJob {
+  shortcode?: string;
+  title?: string;
+  description?: string;
+  url?: string;
+  created_at?: string;
+  location?: { city?: string; country?: string };
+}
+
+interface SmartRecruitersJob {
+  id?: string;
+  name?: string;
+  releasedDate?: string;
+  location?: { city?: string; country?: string; remote?: boolean };
+}
+
 function cleanLocation(raw: string | undefined | null): string | null {
   if (!raw) return null;
   const value = raw.replace(/\s+/g, " ").trim();
@@ -86,6 +102,10 @@ export function boardUrl(company: AtsCompany): string {
       return `https://api.lever.co/v0/postings/${company.slug}?mode=json`;
     case "ashby":
       return `https://api.ashbyhq.com/posting-api/job-board/${company.slug}?includeCompensation=true`;
+    case "workable":
+      return `https://apply.workable.com/api/v1/widget/accounts/${company.slug}?details=true`;
+    case "smartrecruiters":
+      return `https://api.smartrecruiters.com/v1/companies/${company.slug}/postings?limit=100`;
   }
 }
 
@@ -200,6 +220,54 @@ export async function fetchAshby(company: AtsCompany): Promise<RawJob[]> {
   });
 }
 
+export async function fetchWorkable(company: AtsCompany): Promise<RawJob[]> {
+  const data = await getJson<{ name?: string; jobs?: WorkableJob[] }>(boardUrl(company));
+  return (data?.jobs ?? []).map((job, index) => {
+    const location =
+      [job.location?.city, job.location?.country].filter(Boolean).join(", ") || null;
+    return {
+      id: `workable:${company.slug}:${job.shortcode ?? index}`,
+      source: "workable",
+      title: job.title ?? "Untitled role",
+      companyName: company.name ?? data?.name ?? company.slug,
+      location: cleanLocation(location),
+      description: stripHtml(job.description),
+      url: job.url ?? `https://apply.workable.com/${company.slug}/`,
+      salaryMin: null,
+      salaryMax: null,
+      salaryCurrency: null,
+      contractType: null,
+      remote: /\bremote\b/i.test(location ?? ""),
+      postedAt: job.created_at ?? null,
+    };
+  });
+}
+
+export async function fetchSmartRecruiters(company: AtsCompany): Promise<RawJob[]> {
+  const data = await getJson<{ content?: SmartRecruitersJob[] }>(boardUrl(company));
+  return (data?.content ?? []).map((job, index) => {
+    const location =
+      [job.location?.city, job.location?.country].filter(Boolean).join(", ") || null;
+    return {
+      id: `smartrecruiters:${company.slug}:${job.id ?? index}`,
+      source: "smartrecruiters",
+      title: job.name ?? "Untitled role",
+      companyName: company.name ?? company.slug,
+      location: cleanLocation(location),
+      // The list endpoint has no description; a detail call per job would be
+      // one request each, so classification uses the title only.
+      description: null,
+      url: `https://jobs.smartrecruiters.com/${company.slug}/${job.id ?? ""}`,
+      salaryMin: null,
+      salaryMax: null,
+      salaryCurrency: null,
+      contractType: null,
+      remote: Boolean(job.location?.remote),
+      postedAt: job.releasedDate ?? null,
+    };
+  });
+}
+
 export async function fetchAts(company: AtsCompany): Promise<RawJob[]> {
   switch (company.kind) {
     case "greenhouse":
@@ -208,5 +276,9 @@ export async function fetchAts(company: AtsCompany): Promise<RawJob[]> {
       return fetchLever(company);
     case "ashby":
       return fetchAshby(company);
+    case "workable":
+      return fetchWorkable(company);
+    case "smartrecruiters":
+      return fetchSmartRecruiters(company);
   }
 }

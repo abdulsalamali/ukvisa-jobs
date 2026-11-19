@@ -39,7 +39,8 @@ export default async function HomePage() {
     <div className="container">
       <section className="hero">
         <p className="tiny muted" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Personal board · {stats.sponsors.toLocaleString("en-GB")} licensed sponsors indexed
+          Personal board · {stats.jobs.toLocaleString("en-GB")} live jobs from{" "}
+          {stats.employers.toLocaleString("en-GB")} tracked employers
         </p>
         <h1>Jobs at employers the Home Office has licensed to sponsor</h1>
         <p className="lede">
@@ -51,6 +52,10 @@ export default async function HomePage() {
           <div className="stat">
             <b>{stats.jobs.toLocaleString("en-GB")}</b>
             <span>live UK vacancies</span>
+          </div>
+          <div className="stat">
+            <b>{stats.employers.toLocaleString("en-GB")}</b>
+            <span>employers tracked</span>
           </div>
           <div className="stat">
             <b>{stats.jobsThisWeek.toLocaleString("en-GB")}</b>
@@ -65,6 +70,13 @@ export default async function HomePage() {
             <span>from licensed sponsors</span>
           </div>
         </div>
+
+        <p className="tiny muted" style={{ marginTop: 14, marginBottom: 0 }}>
+          Coverage is honest, not exhaustive: the register lists{" "}
+          {stats.sponsors.toLocaleString("en-GB")} licensed sponsors but contains no vacancies,
+          so jobs appear here only for employers whose job feeds are tracked. It is not every
+          sponsored job in the UK.
+        </p>
 
         <p className="tiny muted" style={{ marginTop: 14, marginBottom: 0 }}>
           Sponsor register dated {stats.sourceDate ?? "unknown"}

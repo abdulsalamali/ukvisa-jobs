@@ -131,6 +131,32 @@ Deloitte and KPMG UK did not expose a Workday or Phenom host that could be
 verified (their careers sites redirect elsewhere), so they are not included.
 Finding a working host is a manual step per employer.
 
+### Finding boards automatically
+
+```bash
+npm run discover -- --limit=200          # probe a slice, report only
+npm run discover -- --query=Monzo        # check one employer
+npm run discover -- --query=Monzo --merge  # append verified boards to config
+```
+
+It generates slug candidates from the legal and trading names, probes
+Greenhouse, Lever, Ashby, Workable and SmartRecruiters, and keeps a board only
+when **the provider reports a matching company name** *and* **the board
+advertises at least one UK role**.
+
+Both gates matter. Without them:
+
+- "Infuse Consulting Limited" matched a Singapore company called INFUSE with 272
+  non-UK jobs.
+- "Elastic Path Software (UK) Ltd" matched Elastic NV's board.
+- "ABC Education Consultancy" matched a board with the slug `abc`.
+
+Measured yield: **0 verified boards from a 200-sponsor tech slice**, against
+1/1 for a known employer (Monzo, 52 UK roles). Slug guessing is a long tail,
+not a shortcut — scope it with `--query` or `--city`, and treat merges as
+something to eyeball rather than trust in bulk. Aggregator keys remain the
+real lever for breadth.
+
 ### Verifying sources
 
 ```bash

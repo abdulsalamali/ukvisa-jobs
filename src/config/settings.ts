@@ -16,4 +16,6 @@ export const SOURCE_LABELS: Record<string, string> = {
   reed: "Reed",
   workday: "Employer (Workday)",
   phenom: "Employer (Phenom)",
+  workable: "Employer (Workable)",
+  smartrecruiters: "Employer (SmartRecruiters)",
 };
