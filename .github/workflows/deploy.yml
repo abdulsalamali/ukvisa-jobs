@@ -32,19 +32,27 @@ jobs:
 
       # Optional: keeps the CV out of the repository while still letting the
       # build score jobs against it. Set the CV_TEXT repository secret.
+      # (secrets cannot be referenced in `if`, so the check lives in the shell)
       - name: Write CV from secret
-        if: ${{ secrets.CV_TEXT != '' }}
         env:
           CV_TEXT: ${{ secrets.CV_TEXT }}
-        run: printf '%s' "$CV_TEXT" > config/cv.md
+        run: |
+          if [ -n "$CV_TEXT" ]; then
+            printf '%s' "$CV_TEXT" > config/cv.md
+            echo "CV written from secret"
+          else
+            echo "No CV_TEXT secret set; scoring uses profile.json skills only"
+          fi
 
       # Optional: personal profile overrides (visa status). Note that anything
       # written here is visible on the public site.
       - name: Write profile overrides from secret
-        if: ${{ secrets.PROFILE_LOCAL_JSON != '' }}
         env:
           PROFILE_LOCAL_JSON: ${{ secrets.PROFILE_LOCAL_JSON }}
-        run: printf '%s' "$PROFILE_LOCAL_JSON" > config/profile.local.json
+        run: |
+          if [ -n "$PROFILE_LOCAL_JSON" ]; then
+            printf '%s' "$PROFILE_LOCAL_JSON" > config/profile.local.json
+          fi
 
       - name: Ingest register and jobs
         env:
