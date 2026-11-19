@@ -8,6 +8,7 @@ import { loadCvKeywords, loadProfile, scoreRelevance } from "../lib/relevance";
 import type { RawJob, SponsorRef } from "../lib/types";
 import { downloadRegister, parseRegister } from "../sources/sponsors";
 import { fetchAts, type AtsCompany } from "../sources/ats";
+import { fetchWorkday, type WorkdayCompany } from "../sources/workday";
 import { fetchAdzuna, fetchReed } from "../sources/aggregators";
 
 /* ------------------------------------------------------------------ */
@@ -223,6 +224,23 @@ async function collectJobs(): Promise<RawJob[]> {
   const [adzuna, reed] = await Promise.all([fetchAdzuna(), fetchReed()]);
   raw.push(...adzuna, ...reed);
 
+  const workdayFile = path.join(process.cwd(), "config/workday-companies.json");
+  const workdayCompanies: WorkdayCompany[] = existsSync(workdayFile)
+    ? JSON.parse(readFileSync(workdayFile, "utf8"))
+    : [];
+
+  if (workdayCompanies.length > 0) {
+    console.log(`[jobs] pulling ${workdayCompanies.length} Workday sites (sequential, throttled)…`);
+    // Sequential on purpose: parallel page requests trigger per-IP 429s.
+    for (const company of workdayCompanies) {
+      try {
+        raw.push(...(await fetchWorkday(company)));
+      } catch (error) {
+        console.warn(`[jobs] Workday fetch failed for ${company.name}:`, error);
+      }
+    }
+  }
+
   // Keep the board UK-only. Aggregators need an explicit UK location;
   // employer boards are trusted unless they name a clearly foreign city.
   const uk = raw.filter((job) => {
@@ -361,6 +379,11 @@ async function upsertJobs(client: Client, jobs: RawJob[], index: MatchIndex): Pr
     throw error;
   }
 
+  await setMeta(client, "jobs_updated_at", now);
+}
+
+/** Logged after pruning, so the numbers reflect what is actually visible. */
+async function recordCounts(client: Client): Promise<void> {
   const counts = await client.execute(
     "SELECT confidence, COUNT(*) AS n FROM jobs WHERE active = 1 GROUP BY confidence",
   );
@@ -368,9 +391,29 @@ async function upsertJobs(client: Client, jobs: RawJob[], index: MatchIndex): Pr
     console.log(`[jobs] ${row.confidence}: ${row.n}`);
   }
 
-  await setMeta(client, "jobs_updated_at", now);
   const total = await client.execute("SELECT COUNT(*) AS n FROM jobs WHERE active = 1");
   await setMeta(client, "jobs_count", String(Number(total.rows[0]?.n ?? 0)));
+}
+
+/**
+ * Removes rows that were ingested before the location filter was tightened.
+ * Without this, a bad filter stays visible until the normal 3-day staleness
+ * window closes.
+ */
+async function pruneNonUk(client: Client): Promise<number> {
+  const res = await client.execute("SELECT id, location FROM jobs WHERE active = 1");
+  const bad = res.rows
+    .filter((row) => row.location && !looksUk(String(row.location)))
+    .map((row) => String(row.id));
+
+  for (let i = 0; i < bad.length; i += 200) {
+    const chunk = bad.slice(i, i + 200);
+    await client.execute({
+      sql: `DELETE FROM jobs WHERE id IN (${chunk.map(() => "?").join(",")})`,
+      args: chunk,
+    });
+  }
+  return bad.length;
 }
 
 /* ------------------------------------------------------------------ */
@@ -400,6 +443,9 @@ async function main(): Promise<void> {
     const index = await buildMatchIndex(client);
     const jobs = await collectJobs();
     await upsertJobs(client, jobs, index);
+    const pruned = await pruneNonUk(client);
+    if (pruned > 0) console.log(`[jobs] removed ${pruned} non-UK rows left by earlier runs`);
+    await recordCounts(client);
   }
 
   const summary = await client.execute(

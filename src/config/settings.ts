@@ -14,4 +14,5 @@ export const SOURCE_LABELS: Record<string, string> = {
   ashby: "Employer (Ashby)",
   adzuna: "Adzuna",
   reed: "Reed",
+  workday: "Employer (Workday)",
 };

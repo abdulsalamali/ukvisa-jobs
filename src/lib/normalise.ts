@@ -94,14 +94,25 @@ export function stripHtml(input: string | null | undefined): string {
     .trim();
 }
 
-/** UK-ish location test, so we don't fill the board with Berlin roles. */
+/** Places that look British but are not, or non-UK city names that collide. */
+const FOREIGN_MARKERS =
+  /\b(united states|usa|u\.s\.|new york|california|texas|massachusetts|washington|seattle|san francisco|boston|chicago|austin|atlanta|denver|toronto|vancouver|ontario|quebec|canada|dublin|ireland|germany|berlin|munich|hamburg|france|paris|lyon|milan|rome|italy|spain|madrid|barcelona|portugal|lisbon|netherlands|amsterdam|belgium|brussels|poland|warsaw|krakow|romania|bucharest|india|bangalore|bengaluru|pune|mumbai|delhi|hyderabad|chennai|singapore|malaysia|kuala lumpur|australia|sydney|melbourne|brisbane|new zealand|auckland|brazil|sao paulo|mexico|japan|tokyo|china|shanghai|beijing|hong kong|south africa|johannesburg|cape town|uae|dubai|israel|tel aviv|switzerland|zurich|geneva|sweden|stockholm|norway|oslo|denmark|copenhagen|finland|helsinki|austria|vienna|czech|prague|hungary|budapest|turkey|istanbul|egypt|cairo|kenya|nairobi|nigeria|lagos)\b/i;
+
+/** UK-ish location test, so we don't fill the board with New York roles. */
 export function looksUk(location: string | null | undefined): boolean {
   if (!location) return false;
   const l = location.toLowerCase();
-  if (/\b(uk|united kingdom|great britain|england|scotland|wales|northern ireland)\b/.test(l)) {
+
+  // An explicit UK marker wins, even if a foreign city is also named.
+  if (/\b(united kingdom|great britain|england|scotland|wales|northern ireland|uk)\b/.test(l)) {
     return true;
   }
-  return UK_PLACES.some((p) => l.includes(p));
+  if (FOREIGN_MARKERS.test(l)) return false;
+
+  // Word-boundary match: "New York" must not match the city "York".
+  return UK_PLACES.some((place) =>
+    new RegExp(`(^|[^a-z])${place}([^a-z]|$)`).test(l),
+  );
 }
 
 export const UK_PLACES = [

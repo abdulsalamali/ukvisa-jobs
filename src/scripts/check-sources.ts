@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { boardUrl, fetchAts, type AtsCompany } from "../sources/ats";
+import { fetchWorkday, robotsAllows, type WorkdayCompany } from "../sources/workday";
 import { fetchAdzuna, fetchReed } from "../sources/aggregators";
 
 /**
@@ -89,6 +90,29 @@ async function main(): Promise<void> {
 
   const total = results.reduce((sum, result) => sum + result.jobs, 0);
   console.log(`\n${results.length} boards, ${total} roles fetched.`);
+
+  const workdayFile = path.join(process.cwd(), "config/workday-companies.json");
+  const workdayCompanies: WorkdayCompany[] = existsSync(workdayFile)
+    ? JSON.parse(readFileSync(workdayFile, "utf8"))
+    : [];
+
+  if (workdayCompanies.length > 0) {
+    console.log("\nWorkday sites\n");
+    for (const company of workdayCompanies) {
+      const allowed = await robotsAllows(company.host, `/${company.site}/`);
+      if (!allowed) {
+        failures += 1;
+        row(`${company.name} (workday)`, "disallowed", "robots.txt blocks this path — skipped");
+        continue;
+      }
+      const jobs = await fetchWorkday(company);
+      if (jobs.length === 0) {
+        row(`${company.name} (workday)`, "empty", "site reachable but returned no roles");
+      } else {
+        row(`${company.name} (workday)`, "ok", `${jobs.length} roles`);
+      }
+    }
+  }
 
   if (failures > 0) {
     console.log(`${failures} source(s) need attention.`);

@@ -85,6 +85,36 @@ caveats worth knowing:
   (`looksUk`), so a board with 800 roles may add only 20 UK ones — which is
   the correct behaviour, not a bug.
 
+### `config/workday-companies.json`
+
+Employers whose careers site runs on Workday. Workday publishes the same JSON
+endpoint its own page uses, and most tenants allow crawlers in `robots.txt`
+(Barclays publishes a sitemap and `Allow: /External_Career_Site_Barclays/`).
+
+```json
+{
+  "name": "Barclays",
+  "host": "barclays.wd3.myworkdayjobs.com",
+  "site": "External_Career_Site_Barclays",
+  "searchTerms": ["cyber", "security", "risk", "graduate"],
+  "maxJobs": 120
+}
+```
+
+To find a tenant: open the employer's careers page and look at the
+`*.myworkdayjobs.com` hostname and the path segment after it. The adapter
+checks `robots.txt` before crawling, backs off on HTTP 429, and stores title,
+location, URL and posting date only — it does not mirror ad text.
+
+`searchTerms` matters: Workday rate-limits deep pagination, so a handful of
+keyword searches reaches relevant roles with far fewer requests than paging
+the whole board.
+
+Not every big employer is Workday. PwC UK runs a Phenom site with a published
+sitemap (`jobs.pwc.co.uk/contractors/uk/en/sitemap.xml`), and Deloitte/KPMG
+tenants were not found on the standard `wd3` host — each would need its own
+adapter.
+
 ### Verifying sources
 
 ```bash
