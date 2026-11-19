@@ -54,6 +54,16 @@ export function db(): Client {
   return cached;
 }
 
+/** The statement's first keyword, ignoring leading SQL comments. */
+function statementKind(statement: string): string {
+  const body = statement
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n")
+    .trim();
+  return body.slice(0, 16).toUpperCase();
+}
+
 /** Applies schema.sql. Safe to run repeatedly. */
 export async function migrate(client: Client): Promise<void> {
   const sql = readFileSync(path.join(process.cwd(), "src/lib/schema.sql"), "utf8");
@@ -62,13 +72,13 @@ export async function migrate(client: Client): Promise<void> {
     .map((statement) => statement.trim())
     .filter(Boolean);
 
-  // Tables first, then additive column migrations, then indexes — an index on
-  // a column added by migration would fail if it ran before ensureColumns.
-  for (const statement of statements.filter((s) => /^CREATE TABLE/i.test(s))) {
+  // Tables first, then additive column migrations, then indexes. Statements
+  // begin with a comment line, so the kind is read from the first real keyword.
+  for (const statement of statements.filter((s) => statementKind(s).startsWith("CREATE TABLE"))) {
     await client.execute(statement);
   }
   await ensureColumns(client);
-  for (const statement of statements.filter((s) => /^CREATE INDEX/i.test(s))) {
+  for (const statement of statements.filter((s) => statementKind(s).startsWith("CREATE INDEX"))) {
     await client.execute(statement);
   }
 }
