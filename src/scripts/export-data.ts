@@ -34,7 +34,17 @@ async function exportJobs(): Promise<JobListItem[]> {
     all.push(...items);
     if (all.length >= total || items.length === 0) break;
   }
-  return all;
+
+  // The relevance reasons quote keywords taken from the CV. Keep the signal,
+  // drop the words: the deployed JSON is public.
+  return all.map((job) => ({
+    ...job,
+    relevanceSignals: job.relevanceSignals.map((signal) =>
+      signal.startsWith("Overlaps your CV:")
+        ? "Overlaps wording from your CV"
+        : signal,
+    ),
+  }));
 }
 
 async function exportSponsors(): Promise<{ total: number; shards: Record<string, number> }> {
