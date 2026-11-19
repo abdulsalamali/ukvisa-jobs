@@ -110,10 +110,26 @@ location, URL and posting date only — it does not mirror ad text.
 keyword searches reaches relevant roles with far fewer requests than paging
 the whole board.
 
-Not every big employer is Workday. PwC UK runs a Phenom site with a published
-sitemap (`jobs.pwc.co.uk/contractors/uk/en/sitemap.xml`), and Deloitte/KPMG
-tenants were not found on the standard `wd3` host — each would need its own
-adapter.
+Not every big employer is Workday. `config/phenom-companies.json` covers
+Phenom People careers sites, which server-render their result set into the page
+(`phApp.ddo`). PwC UK is configured there:
+
+```json
+{
+  "name": "PwC",
+  "base": "https://jobs.pwc.co.uk",
+  "path": "/uk/en",
+  "searchTerms": ["cyber", "security", "risk", "graduate", "internship", "placement"]
+}
+```
+
+Search terms matter here too: PwC's cyber roles are mostly experienced hires,
+while the graduate schemes sit behind `graduate`, `internship` and `placement`.
+The adapter stores the employer's own teaser text rather than mirroring ads.
+
+Deloitte and KPMG UK did not expose a Workday or Phenom host that could be
+verified (their careers sites redirect elsewhere), so they are not included.
+Finding a working host is a manual step per employer.
 
 ### Verifying sources
 

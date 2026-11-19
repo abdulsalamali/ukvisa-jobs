@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { boardUrl, fetchAts, type AtsCompany } from "../sources/ats";
-import { fetchWorkday, robotsAllows, type WorkdayCompany } from "../sources/workday";
+import { fetchWorkday, type WorkdayCompany } from "../sources/workday";
+import { fetchPhenom, type PhenomCompany } from "../sources/phenom";
+import { robotsAllows } from "../lib/robots";
 import { fetchAdzuna, fetchReed } from "../sources/aggregators";
 
 /**
@@ -90,6 +92,24 @@ async function main(): Promise<void> {
 
   const total = results.reduce((sum, result) => sum + result.jobs, 0);
   console.log(`\n${results.length} boards, ${total} roles fetched.`);
+
+  const phenomFile = path.join(process.cwd(), "config/phenom-companies.json");
+  const phenomCompanies: PhenomCompany[] = existsSync(phenomFile)
+    ? JSON.parse(readFileSync(phenomFile, "utf8"))
+    : [];
+
+  if (phenomCompanies.length > 0) {
+    console.log("\nPhenom sites\n");
+    for (const company of phenomCompanies) {
+      const jobs = await fetchPhenom(company);
+      if (jobs.length === 0) {
+        row(`${company.name} (phenom)`, "empty", "page reached but no embedded jobs parsed");
+        failures += 1;
+      } else {
+        row(`${company.name} (phenom)`, "ok", `${jobs.length} roles`);
+      }
+    }
+  }
 
   const workdayFile = path.join(process.cwd(), "config/workday-companies.json");
   const workdayCompanies: WorkdayCompany[] = existsSync(workdayFile)

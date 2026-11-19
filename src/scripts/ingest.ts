@@ -9,6 +9,7 @@ import type { RawJob, SponsorRef } from "../lib/types";
 import { downloadRegister, parseRegister } from "../sources/sponsors";
 import { fetchAts, type AtsCompany } from "../sources/ats";
 import { fetchWorkday, type WorkdayCompany } from "../sources/workday";
+import { fetchPhenom, type PhenomCompany } from "../sources/phenom";
 import { fetchAdzuna, fetchReed } from "../sources/aggregators";
 
 /* ------------------------------------------------------------------ */
@@ -237,6 +238,22 @@ async function collectJobs(): Promise<RawJob[]> {
         raw.push(...(await fetchWorkday(company)));
       } catch (error) {
         console.warn(`[jobs] Workday fetch failed for ${company.name}:`, error);
+      }
+    }
+  }
+
+  const phenomFile = path.join(process.cwd(), "config/phenom-companies.json");
+  const phenomCompanies: PhenomCompany[] = existsSync(phenomFile)
+    ? JSON.parse(readFileSync(phenomFile, "utf8"))
+    : [];
+
+  if (phenomCompanies.length > 0) {
+    console.log(`[jobs] pulling ${phenomCompanies.length} Phenom sites (sequential, throttled)…`);
+    for (const company of phenomCompanies) {
+      try {
+        raw.push(...(await fetchPhenom(company)));
+      } catch (error) {
+        console.warn(`[jobs] Phenom fetch failed for ${company.name}:`, error);
       }
     }
   }

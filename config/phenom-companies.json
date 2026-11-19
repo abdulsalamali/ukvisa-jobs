@@ -1,0 +1,18 @@
+[
+  {
+    "name": "PwC",
+    "base": "https://jobs.pwc.co.uk",
+    "path": "/uk/en",
+    "searchTerms": [
+      "cyber",
+      "security",
+      "risk",
+      "graduate",
+      "internship",
+      "placement",
+      "technology",
+      "data"
+    ],
+    "maxJobs": 100
+  }
+]
