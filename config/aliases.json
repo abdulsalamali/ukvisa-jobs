@@ -1,0 +1,11 @@
+{
+  "_comment": "Maps a normalised job-posting employer name to a normalised register name. Only needed when the ad uses a name that is neither the legal name nor the t/a trading name on the register. Verified against the register on 2026-11-19.",
+  "monzo": "monzo bank",
+  "datadog": "datadog ireland",
+  "sumup": "sumup payments",
+  "elastic": "elasticsearch",
+  "zopa": "zopa bank",
+  "ebury": "ebury partners",
+  "tide": "tide platform",
+  "form3": "form3 technology"
+}

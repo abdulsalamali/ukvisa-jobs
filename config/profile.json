@@ -1,0 +1,90 @@
+{
+  "headline": "Cyber security, SOC, GRC and network security — Graduate visa to Dec 2027",
+  "visa": {
+    "route": "Graduate",
+    "validUntil": "2027-12-01",
+    "note": "No sponsorship needed before Dec 2027. Roles starting after that need a licensed sponsor, so internships and graduate schemes that convert are still worth applying to."
+  },
+  "seniorityTarget": "early",
+  "fields": [
+    {
+      "name": "Cybersecurity / SOC",
+      "weight": 1,
+      "keywords": [
+        "cyber security","cybersecurity","information security","infosec",
+        "soc analyst","security analyst","security engineer","security operations",
+        "security consultant","security specialist","security architect",
+        "penetration test","pen tester","pentest","red team","blue team",
+        "threat intelligence","threat hunting","threat analysis",
+        "incident response","siem","splunk","sentinel","qradar",
+        "vulnerability","malware","forensics","edr","xdr","ids","ips",
+        "mitre att&ck","security monitoring","security awareness",
+        "cyber","soc"
+      ],
+      "exclude": [
+        "security guard","security officer","loss prevention",
+        "door supervisor","physical security","night security",
+        "security cleared driver","security driver"
+      ]
+    },
+    {
+      "name": "GRC / Risk / Compliance",
+      "weight": 1,
+      "keywords": [
+        "grc","governance risk","governance, risk","risk analyst","risk manager",
+        "cyber risk","security risk","compliance analyst","compliance officer",
+        "compliance manager","information security officer","information security manager",
+        "security governance","third party risk","vendor risk","supplier risk",
+        "it audit","technology audit","internal audit","audit","assurance",
+        "iso 27001","iso27001","nist","soc 2","pci dss","gdpr",
+        "data protection","data privacy","dpo","business continuity",
+        "operational resilience","regulatory","cism","cisa","crisc"
+      ],
+      "exclude": ["financial crime compliance", "aml analyst", "kyc analyst",
+        "fraud", "credit risk", "market risk", "financial risk",
+        "liquidity risk", "underwriting risk", "insurance risk"]
+    },
+    {
+      "name": "Networks / Infrastructure",
+      "weight": 0.8,
+      "keywords": [
+        "network engineer","network administrator","network analyst",
+        "network operations","noc","cisco","lan","wan","vlan",
+        "routing","switching","tcp/ip","dns","dhcp","firewall",
+        "infrastructure engineer","infrastructure analyst","systems administrator",
+        "sysadmin","vmware","virtualisation","virtualization",
+        "data centre","data center","connectivity"
+      ]
+    },
+    {
+      "name": "Software / IT",
+      "weight": 0.4,
+      "keywords": [
+        "software engineer","software developer","developer","full stack","fullstack",
+        "backend","back end","frontend","front end","python","javascript",
+        "java","php","flutter","it support","it administrator","it technician",
+        "service desk","helpdesk","help desk","application support",
+        "technical support","graduate software","graduate developer"
+      ]
+    }
+  ],
+  "skills": [
+    "python","javascript","java","php","flutter",
+    "splunk","siem","wireshark","nmap","burp suite","metasploit",
+    "cisco","vlan","tcp/ip","dns","dhcp","firewall",
+    "vmware","linux","windows","macos",
+    "comptia security+","ejpt","penetration testing","vulnerability",
+    "incident response","threat intelligence","network security",
+    "machine learning","random forest","xgboost","bert","nlp",
+    "iso 27001","nist","risk","compliance","audit"
+  ],
+  "locations": [
+    { "name": "London", "weight": 12 },
+    { "name": "Remote", "weight": 10 },
+    { "name": "Coventry", "weight": 8 },
+    { "name": "Birmingham", "weight": 8 },
+    { "name": "West Midlands", "weight": 7 }
+  ],
+  "locationBaseline": 4,
+  "cvPath": "config/cv.md"
+}

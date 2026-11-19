@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Generated data — rebuilt nightly, never committed
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.csv
+data/cv.pdf
+data/cv.txt
+
+.env
+.env.local
+.DS_Store
+
+# Your CV is personal — never commit it
+config/cv.md

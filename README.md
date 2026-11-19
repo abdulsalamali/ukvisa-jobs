@@ -1,0 +1,193 @@
+# SponsorBoard
+
+A personal job board for UK vacancies at employers licensed to sponsor visas.
+It joins the Home Office sponsor register with live job feeds, then classifies
+and scores every listing against your own profile and CV.
+
+Built because the commercial equivalents charge for data that is mostly free.
+
+---
+
+## What it does
+
+| Feature | How it works |
+| --- | --- |
+| Sponsor directory | 126k+ organisations parsed from the daily Home Office CSV (OGL v3) |
+| Live jobs | Employer ATS feeds (Greenhouse, Lever, Ashby) + Adzuna/Reed free tiers |
+| Employer → register matching | Normalised legal name, compact name, and `t/a` trading names |
+| Sponsorship labels | Rule-based, with the matching sentence stored as evidence |
+| Job type taxonomy | Graduate / Internship / Placement / Insight / Entry / Associate / Mid-Senior / Director |
+| Personal scoring | Field weights + your skills + CV overlap + location + seniority fit |
+| Salary / new-entrant flags | Advertised pay compared against configurable thresholds |
+
+Every label and score is explainable: the UI shows the sentence or rule that
+produced it. Nothing is an opaque "AI score".
+
+---
+
+## Quick start
+
+```bash
+cd ukvisa-jobs
+npm install
+cp .env.example .env
+
+npm run ingest          # register + jobs
+npm run dev             # http://localhost:3000
+```
+
+`npm run ingest:sponsors` refreshes only the register (~10 MB download,
+126k rows, a few seconds). `npm run ingest:jobs` refreshes only listings.
+
+---
+
+## Making it yours
+
+### `config/profile.json`
+
+- `fields` — what you are targeting. Order does not matter; `weight` (0–1)
+  does. A cyber field at `1` beats a software field at `0.4`.
+- `exclude` — phrases that cancel a match. This is what stops "security guard"
+  matching a cyber role.
+- `skills` — technologies you can claim. Each one that appears in an ad adds
+  points.
+- `locations` — weighted. London at 12 beats Coventry at 8; anything else in
+  the UK still scores `locationBaseline`.
+- `seniorityTarget` — set to `early` to penalise Director/Mid-Senior roles
+  that would be a stretch.
+- `visa` — used to show a reminder and to surface "no sponsorship" jobs as
+  still-applyable while your current visa is valid.
+
+### `config/cv.md`
+
+Paste your CV as plain text. The ingester extracts the phrases that repeat
+across it (one- and two-word), and job ads get a bonus when they overlap.
+`config/cv.md` is gitignored — keep it that way.
+
+### `config/ats-companies.json`
+
+Add employers whose job boards you want pulled directly. Find the slug from
+their careers URL:
+
+- `boards.greenhouse.io/<slug>` → `{ "kind": "greenhouse", "slug": "<slug>" }`
+- `jobs.lever.co/<slug>` → `{ "kind": "lever", "slug": "<slug>" }`
+- `jobs.ashbyhq.com/<slug>` → `{ "kind": "ashby", "slug": "<slug>" }`
+
+Invalid slugs return 404 and are skipped, so it is safe to guess and re-run.
+
+27 boards are seeded (fintech, cyber vendors, and remote-first tech). Two
+caveats worth knowing:
+
+- The largest graduate recruiters — Deloitte, PwC, KPMG, EY, the big banks and
+  the civil service — run Workday or in-house portals with no public feed. They
+  cannot be pulled this way, and scraping them is not worth the breakage.
+- Global companies list mostly non-UK roles. These are filtered out at ingest
+  (`looksUk`), so a board with 800 roles may add only 20 UK ones — which is
+  the correct behaviour, not a bug.
+
+### Verifying sources
+
+```bash
+npm run check:sources
+```
+
+Prints one line per source with its HTTP status and role count, and exits
+non-zero if anything is broken. Run it after adding a company or an API key.
+
+### `config/aliases.json`
+
+Only needed when the ad uses a name that is neither the legal name nor the
+`t/a` trading name on the register:
+
+```json
+{ "monzo": "monzo bank" }
+```
+
+---
+
+## How the labels are decided
+
+**Confidence** (first rule that matches wins):
+
+1. `no_sponsorship` — an explicit refusal ("we are unable to offer visa
+   sponsorship", "no sponsorship available", "must already have the right to
+   work").
+2. `apply_with_confidence` — a positive statement ("we sponsor visas",
+   "visa sponsorship available", "certificate of sponsorship").
+3. `application_recommended` — no statement either way, but the employer is on
+   the register.
+4. `unverified` — employer not matched to the register.
+
+**Flags** are independent of confidence:
+
+- `new_entrant_salary` — advertised max pay is below the general threshold, or
+  the ad mentions new entrants.
+- `phd_route` — the ad refers to PhD/doctorate holders.
+- `student_graduate_hpi` — internships/placements/insight programmes, or ads
+  referencing Student/Graduate/HPI visas.
+
+Thresholds live in `src/config/settings.ts`. **Verify them on GOV.UK** — the
+UK changed the Skilled Worker salary floors in July 2025 and will change them
+again.
+
+**Relevance (0–100)** = field match (title 30, body 12, × field weight)
++ skills (max 20) + CV overlap (max 20) + location (weighted) + sponsorship
+(8/4) + recency (6) + early-careers bonus (5) − seniority penalty (18/28).
+
+---
+
+## Deployment (free tier)
+
+1. **Database.** Create a free Turso database:
+   ```bash
+   turso db create sponsorboard
+   turso db show sponsorboard --url
+   turso db tokens create sponsorboard
+   ```
+2. **Seed it once** locally:
+   ```bash
+   TURSO_DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... npm run ingest
+   ```
+3. **Deploy** to Vercel and set `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` in
+   project settings. `@libsql/client` is already marked as a server external
+   package in `next.config.ts`.
+
+Cost: £0 on Turso's free tier (5 GB, 500M row reads/month) plus Vercel's free
+tier. A domain is the only optional spend.
+
+### Nightly refresh
+
+`.github/workflows/ingest.yml` runs at 04:10 UTC. Add these repository
+secrets: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and optionally
+`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `REED_API_KEY`.
+
+Without the aggregator keys the site still works — it just covers fewer
+employers, because ATS feeds need no key at all.
+
+---
+
+## Data sources and their terms
+
+- **Home Office register** — Open Government Licence v3.0. Attribution is
+  required and included in the footer. Free for commercial use.
+- **Adzuna** — free developer tier; check their attribution and caching terms.
+- **Reed** — free API key; attribution required.
+- **Greenhouse / Lever / Ashby public boards** — no key. These are public job
+  boards intended to be read by aggregators, but check each provider's terms
+  before making the site public.
+- **No scraping of LinkedIn, Indeed or ukvisajobs.com.** It breaks their terms,
+  breaks constantly, and is not needed: the underlying data is public.
+
+---
+
+## Known limits
+
+- Coverage is only as good as the employers you add. Start with the ones you
+  actually want to work for.
+- Employer matching is deliberately conservative. A missed match shows
+  "Unverified"; a wrong match would falsely claim sponsorship, which is worse.
+  Use `config/aliases.json` to fix misses.
+- Salary is only present when the employer publishes it.
+- Job type classification is title-based. "Analyst" roles default to Entry
+  Level; override per employer if that is wrong.
+- This is information, not immigration advice.
