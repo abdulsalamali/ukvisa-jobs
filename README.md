@@ -220,7 +220,7 @@ them on a schedule.
 3. Push to `main`, or run the *Build and deploy* workflow manually.
 
 Every run: `npm run ingest` → `npm run build:static` → upload `out/`. The cron
-is 18:00 UTC daily, so jobs are up to a day old. Narrow it to every few hours
+is 18:10 UTC daily, so jobs are up to a day old. Narrow it to every few hours
 if you prefer fresher data.
 
 ### Optional secrets
