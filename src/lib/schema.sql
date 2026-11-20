@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   posted_at TEXT,
   job_type TEXT NOT NULL DEFAULT 'unspecified',
   job_category TEXT NOT NULL DEFAULT 'unspecified',
+  experience_years INTEGER,
   confidence TEXT NOT NULL DEFAULT 'unverified',
   flags TEXT NOT NULL DEFAULT '[]',
   signals TEXT NOT NULL DEFAULT '[]',

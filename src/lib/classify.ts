@@ -2,6 +2,7 @@ import {
   SKILLED_WORKER_GENERAL_THRESHOLD,
   SKILLED_WORKER_NEW_ENTRANT_THRESHOLD,
 } from "../config/settings";
+import { extractExperienceYears } from "./experience";
 import type {
   Confidence,
   JobCategory,
@@ -19,6 +20,8 @@ type TypeRule = { type: JobType; re: RegExp };
 
 // Order matters: the most specific title wins. "Graduate Associate" is a
 // graduate role, not an associate role; "Associate Director" is a director.
+// Only explicit seniority words live here. Plain individual-contributor titles
+// ("Backend Engineer", "Security Analyst") are decided by stated experience.
 const TYPE_RULES: TypeRule[] = [
   { type: "director", re: /\b(director|head of|vice president|vp|chief|c[toef]o)\b/i },
   { type: "insight", re: /\binsight\s+(programme|program|week|day|scheme|event)\b/i },
@@ -28,16 +31,20 @@ const TYPE_RULES: TypeRule[] = [
   { type: "mid_senior", re: /\b(senior|lead|principal|staff|manager|architect|specialist)\b/i },
   { type: "associate", re: /\bassociate\b/i },
   { type: "entry_level", re: /\b(entry[- ]level|junior|trainee|apprentice|apprenticeship|no experience)\b/i },
-  // Most postings are plain individual-contributor roles ("Backend Engineer",
-  // "Security Analyst"). Without a seniority word they belong in Entry Level.
-  { type: "entry_level", re: /\b(engineer|analyst|developer|consultant|administrator|technician|coordinator)\b/i },
 ];
 
-export function classifyJobType(title: string): JobType {
+/** Entry level means two years or less, so a stated requirement must be read. */
+export const ENTRY_LEVEL_MAX_YEARS = 2;
+
+export function classifyJobType(title: string, years: number | null): JobType {
   for (const rule of TYPE_RULES) {
     if (rule.re.test(title)) return rule.type;
   }
-  return "unspecified";
+
+  // No seniority word in the title: the ad's stated experience decides.
+  // Unknown means unclassified rather than a guess.
+  if (years === null) return "unspecified";
+  return years <= ENTRY_LEVEL_MAX_YEARS ? "entry_level" : "mid_senior";
 }
 
 const STUDENT_GRADUATE_TYPES = new Set<JobType>([
@@ -164,12 +171,15 @@ export interface Assessment {
   confidence: Confidence;
   jobType: JobType;
   jobCategory: JobCategory;
+  /** Minimum years the ad asks for, when it states one. */
+  experienceYears: number | null;
   flags: JobFlag[];
   signals: Signal[];
 }
 
 export function assess(input: AssessmentInput): Assessment {
-  const jobType = classifyJobType(input.title);
+  const experienceYears = extractExperienceYears(input.description);
+  const jobType = classifyJobType(input.title, experienceYears);
   const jobCategory = categoryFor(jobType);
   const description = (input.description ?? "").toLowerCase();
   const haystack = `${input.title}\n${description}`;
@@ -212,7 +222,16 @@ export function assess(input: AssessmentInput): Assessment {
     });
   }
 
-  /* --- 2. Salary / new entrant ----------------------------------- */
+  /* --- 2. Stated experience --------------------------------------- */
+
+  if (experienceYears !== null && experienceYears > ENTRY_LEVEL_MAX_YEARS) {
+    signals.push({
+      rule: "experience_requirement",
+      detail: `Ad asks for ${experienceYears}+ years of experience, so this is not an entry-level role.`,
+    });
+  }
+
+  /* --- 3. Salary / new entrant ----------------------------------- */
 
   const pay = input.salaryMax ?? input.salaryMin;
   if (pay && pay > 0 && pay < SKILLED_WORKER_GENERAL_THRESHOLD) {
@@ -273,6 +292,7 @@ export function assess(input: AssessmentInput): Assessment {
     confidence,
     jobType,
     jobCategory,
+    experienceYears,
     flags,
     signals: signals.slice(0, 6),
   };

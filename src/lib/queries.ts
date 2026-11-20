@@ -25,6 +25,8 @@ export interface JobListItem {
   salaryCurrency: string | null;
   jobType: JobType;
   jobCategory: JobCategory;
+  /** Minimum years of experience the ad states, if any. */
+  experienceYears: number | null;
   confidence: Confidence;
   flags: JobFlag[];
   signals: Signal[];
@@ -56,6 +58,10 @@ function toJob(row: Record<string, unknown>): JobListItem {
     salaryCurrency: row.salary_currency ? String(row.salary_currency) : null,
     jobType: String(row.job_type) as JobType,
     jobCategory: String(row.job_category) as JobCategory,
+    experienceYears:
+      row.experience_years === null || row.experience_years === undefined
+        ? null
+        : Number(row.experience_years),
     confidence: String(row.confidence) as Confidence,
     flags: parseJson<JobFlag[]>(row.flags, []),
     signals: parseJson<Signal[]>(row.signals, []),

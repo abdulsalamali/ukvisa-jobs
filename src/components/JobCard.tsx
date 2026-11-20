@@ -90,6 +90,14 @@ export function JobCard({
           </span>
         ))}
         <span className="badge ghost">{JOB_TYPE_LABELS[job.jobType]}</span>
+        {job.experienceYears !== null && job.experienceYears > 0 && (
+          <span
+            className={`badge ${job.experienceYears > 2 ? "warn" : "ghost"}`}
+            title={`The ad states ${job.experienceYears}+ years of experience`}
+          >
+            {job.experienceYears}+ yrs
+          </span>
+        )}
         <AppliedToggle jobId={job.id} />
       </div>
 

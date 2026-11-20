@@ -198,6 +198,12 @@ Only needed when the ad uses a name that is neither the legal name nor the
 - `student_graduate_hpi` — internships/placements/insight programmes, or ads
   referencing Student/Graduate/HPI visas.
 
+**Job type** is decided in two steps. Explicit seniority words in the title win
+(Graduate, Intern, Senior, Director…). Otherwise the ad's *stated* experience
+decides: **2 years or less is Entry Level**, 3+ years is Mid-Senior. If the ad
+never states a requirement, the role is left **Unclassified** rather than
+guessed — a "Backend Engineer" title alone no longer implies Entry Level.
+
 Thresholds live in `src/config/settings.ts`. **Verify them on GOV.UK** — the
 UK changed the Skilled Worker salary floors in July 2025 and will change them
 again.

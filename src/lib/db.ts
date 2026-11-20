@@ -92,6 +92,7 @@ async function ensureColumns(client: Client): Promise<void> {
     ["jobs", "relevance", "INTEGER NOT NULL DEFAULT 0"],
     ["jobs", "relevance_signals", "TEXT NOT NULL DEFAULT '[]'"],
     ["jobs", "city", "TEXT"],
+    ["jobs", "experience_years", "INTEGER"],
   ];
 
   for (const [table, column, definition] of additions) {
